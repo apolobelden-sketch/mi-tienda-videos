@@ -1,32 +1,24 @@
 import streamlit as st
-from st_supabase_connection import SupabaseConnection
+from supabase import create_client
 
-# 1. Configuración de la pantalla
-st.set_page_config(page_title="Mi Tienda de Videos", layout="centered")
-st.title("🎥 Mi Vitrina Digital")
+# Conexión con los Secrets que ya guardaste
+url = st.secrets["SUPABASE_URL"]
+key = st.secrets["SUPABASE_KEY"]
+supabase = create_client(url, key)
 
-# 2. Conexión con tu base de datos (Supabase)
-# Usaremos las llaves que encontraste en los pasos anteriores
-conn = st.connection("supabase", type=SupabaseConnection)
+st.title("🎬 Mi Tienda Digital")
 
-# 3. Traer los productos de tu tabla 'productos'
-items = conn.query("*", table="productos").execute()
-
-if items.data:
-    st.write("### Nuestros Productos")
-    for producto in items.data:
-        with st.container():
-            st.subheader(f"📦 {producto['nombre']}")
-            st.write(f"**Precio:** ${producto['precio']}")
-            
-            # Buscar el video relacionado en la tabla 'media'
-            media = conn.query("url_video", table="media").eq("producto_id", producto["id"]).execute()
-            
-            if media.data:
-                # Mostramos el video de YouTube/Drive que guardaste
-                st.video(media.data[0]["url_video"])
-            
-            st.button(f"Comprar {producto['nombre']}", key=f"btn_{producto['id']}")
-            st.divider()
-else:
-    st.info("Conectando con la base de datos... Asegúrate de configurar las llaves en Streamlit.")
+try:
+    # Traemos los datos de la tabla 'productos'
+    datos = supabase.table("productos").select("*").execute()
+    
+    if datos.data:
+        for item in datos.data:
+            st.subheader(item.get('nombre', 'Sin nombre'))
+            # Si en tu tabla la columna se llama 'url', aquí se verá el video
+            st.video(item.get('url', ''))
+    else:
+        st.info("La base de datos está vacía.")
+        
+except Exception as e:
+    st.error(f"Error: {e}")
